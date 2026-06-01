@@ -1,0 +1,237 @@
+"""Rewrite FFmpeg JFIF MJPEG frames to Ruizu AVI1 layout (matches -avi_mjpeg 1)."""
+
+import struct
+from pathlib import Path
+
+LUMA_Q = bytes([
+    0x08, 0x06, 0x06, 0x07, 0x06, 0x05, 0x08, 0x07, 0x07, 0x07, 0x09, 0x09,
+    0x08, 0x0a, 0x0c, 0x14, 0x0d, 0x0c, 0x0b, 0x0b, 0x0c, 0x19, 0x12, 0x13,
+    0x0f, 0x14, 0x1d, 0x1a, 0x1f, 0x1e, 0x1d, 0x1a, 0x1c, 0x1c, 0x20, 0x24,
+    0x2e, 0x27, 0x20, 0x22, 0x2c, 0x23, 0x1c, 0x1c, 0x28, 0x37, 0x29, 0x2c,
+    0x30, 0x31, 0x34, 0x34, 0x34, 0x1f, 0x27, 0x39, 0x3d, 0x38, 0x32, 0x3c,
+    0x2e, 0x33, 0x34, 0x32,
+])
+CHROMA_Q = bytes([
+    0x09, 0x09, 0x09, 0x0c, 0x0b, 0x0c, 0x18, 0x0d, 0x0d, 0x18, 0x32, 0x21,
+    0x1c, 0x21, 0x32, 0x32, 0x32, 0x32, 0x32, 0x32, 0x32, 0x32, 0x32, 0x32,
+    0x32, 0x32, 0x32, 0x32, 0x32, 0x32, 0x32, 0x32, 0x32, 0x32, 0x32, 0x32,
+    0x32, 0x32, 0x32, 0x32, 0x32, 0x32, 0x32, 0x32, 0x32, 0x32, 0x32, 0x32,
+    0x32, 0x32, 0x32, 0x32, 0x32, 0x32, 0x32, 0x32, 0x32, 0x32, 0x32, 0x32,
+    0x32, 0x32, 0x32, 0x32,
+])
+
+APP0_AVI1 = b"\xff\xe0\x00\x10AVI1" + b"\x00" * 10
+
+BITS_DC_L = bytes([0, 0, 1, 5, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0])
+BITS_DC_C = bytes([0, 0, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0])
+VAL_DC = bytes(range(12))
+BITS_AC_L = bytes([0, 0, 2, 1, 3, 3, 2, 4, 3, 5, 5, 4, 4, 0, 0, 1, 0x7D])
+VAL_AC_L = bytes([
+    0x01, 0x02, 0x03, 0x00, 0x04, 0x11, 0x05, 0x12, 0x21, 0x31, 0x41, 0x06, 0x13, 0x51, 0x61, 0x07,
+    0x22, 0x71, 0x14, 0x32, 0x81, 0x91, 0xa1, 0x08, 0x23, 0x42, 0xb1, 0xc1, 0x15, 0x52, 0xd1, 0xf0,
+    0x24, 0x33, 0x62, 0x72, 0x82, 0x09, 0x0a, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x25, 0x26, 0x27, 0x28,
+    0x29, 0x2a, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3a, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48, 0x49,
+    0x4a, 0x53, 0x54, 0x55, 0x56, 0x57, 0x58, 0x59, 0x5a, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69,
+    0x6a, 0x73, 0x74, 0x75, 0x76, 0x77, 0x78, 0x79, 0x7a, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89,
+    0x8a, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98, 0x99, 0x9a, 0xa2, 0xa3, 0xa4, 0xa5, 0xa6, 0xa7,
+    0xa8, 0xa9, 0xaa, 0xb2, 0xb3, 0xb4, 0xb5, 0xb6, 0xb7, 0xb8, 0xb9, 0xba, 0xc2, 0xc3, 0xc4, 0xc5,
+    0xc6, 0xc7, 0xc8, 0xc9, 0xca, 0xd2, 0xd3, 0xd4, 0xd5, 0xd6, 0xd7, 0xd8, 0xd9, 0xda, 0xe1, 0xe2,
+    0xe3, 0xe4, 0xe5, 0xe6, 0xe7, 0xe8, 0xe9, 0xea, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7, 0xf8,
+    0xf9, 0xfa,
+])
+BITS_AC_C = bytes([0, 0, 2, 1, 2, 4, 4, 3, 4, 7, 5, 4, 4, 0, 1, 2, 0x77])
+VAL_AC_C = bytes([
+    0x00, 0x01, 0x02, 0x03, 0x11, 0x04, 0x05, 0x21, 0x31, 0x06, 0x12, 0x41, 0x51, 0x07, 0x61, 0x71,
+    0x13, 0x22, 0x32, 0x81, 0x08, 0x14, 0x42, 0x91, 0xa1, 0xb1, 0xc1, 0x09, 0x23, 0x33, 0x52, 0xf0,
+    0x15, 0x62, 0x72, 0xd1, 0x0a, 0x16, 0x24, 0x34, 0xe1, 0x25, 0xf1, 0x17, 0x18, 0x19, 0x1a, 0x26,
+    0x27, 0x28, 0x29, 0x2a, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3a, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48,
+    0x49, 0x4a, 0x53, 0x54, 0x55, 0x56, 0x57, 0x58, 0x59, 0x5a, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68,
+    0x69, 0x6a, 0x73, 0x74, 0x75, 0x76, 0x77, 0x78, 0x79, 0x7a, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87,
+    0x88, 0x89, 0x8a, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98, 0x99, 0x9a, 0xa2, 0xa3, 0xa4, 0xa5,
+    0xa6, 0xa7, 0xa8, 0xa9, 0xaa, 0xb2, 0xb3, 0xb4, 0xb5, 0xb6, 0xb7, 0xb8, 0xb9, 0xba, 0xc2, 0xc3,
+    0xc4, 0xc5, 0xc6, 0xc7, 0xc8, 0xc9, 0xca, 0xd2, 0xd3, 0xd4, 0xd5, 0xd6, 0xd7, 0xd8, 0xd9, 0xda,
+    0xe2, 0xe3, 0xe4, 0xe5, 0xe6, 0xe7, 0xe8, 0xe9, 0xea, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7, 0xf8,
+    0xf9, 0xfa,
+])
+
+
+def _dqt(table_id: int, table: bytes) -> bytes:
+    return b"\xff\xdb\x00\x43" + bytes([table_id & 0x0F]) + table
+
+
+def _dht(table_class: int, table_id: int, bits: bytes, vals: bytes) -> bytes:
+    n = sum(bits[1:17])
+    body = bytes([(table_class << 4) | (table_id & 0x0F)]) + bits[1:17] + vals[:n]
+    return b"\xff\xc4" + struct.pack(">H", len(body) + 2) + body
+
+
+def _ruizu_dht() -> bytes:
+    return b"".join([
+        _dht(0, 0, BITS_DC_L, VAL_DC),
+        _dht(1, 0, BITS_AC_L, VAL_AC_L),
+        _dht(0, 1, BITS_DC_C, VAL_DC),
+        _dht(1, 1, BITS_AC_C, VAL_AC_C),
+    ])
+
+
+def _find_marker(data: bytes, start: int, marker: int) -> int:
+    i = start
+    while i < len(data) - 1:
+        if data[i] == 0xFF and data[i + 1] == marker:
+            return i
+        i += 1
+    return -1
+
+
+def _segment_end(data: bytes, pos: int) -> int:
+    return pos + 2 + struct.unpack_from(">H", data, pos + 2)[0]
+
+
+def _is_avi1(data: bytes) -> bool:
+    return len(data) >= 20 and data[:2] == b"\xff\xd8" and data[6:10] == b"AVI1"
+
+
+def _patch_sof0_chroma(sof0: bytes) -> bytes:
+    out = bytearray(sof0)
+    if len(out) < 12:
+        return sof0
+    off = 10
+    for _ in range(out[9]):
+        if off + 3 > len(out):
+            break
+        if out[off] in (2, 3):
+            out[off + 2] = 1
+        off += 3
+    return bytes(out)
+
+
+def _skip_app0(data: bytes, start: int) -> int:
+    i = start
+    while i < len(data) - 3 and data[i] == 0xFF and data[i + 1] == 0xE0:
+        i = _segment_end(data, i)
+    return i
+
+
+def _copy_markers(data: bytes, start: int, end: int, markers: set[int]) -> tuple[list[bytes], int]:
+    parts: list[bytes] = []
+    i = start
+    while i < end and i < len(data) - 1:
+        if data[i] != 0xFF:
+            break
+        marker = data[i + 1]
+        if marker not in markers:
+            break
+        seg_end = _segment_end(data, i)
+        parts.append(data[i:seg_end])
+        i = seg_end
+    return parts, i
+
+
+def rewrite_jpeg(data: bytes, mode: str = "full") -> bytes:
+    if mode != "full" and _is_avi1(data):
+        return data
+    if data[:2] != b"\xff\xd8":
+        raise ValueError("not a JPEG bitstream")
+    sos = _find_marker(data, 2, 0xDA)
+    sof0 = _find_marker(data, 2, 0xC0)
+    if sos < 0 or sof0 < 0:
+        raise ValueError("JPEG missing SOF0/SOS")
+    sof0_seg = _patch_sof0_chroma(data[sof0:_segment_end(data, sof0)])
+
+    if mode == "minimal":
+        parts = [b"\xff\xd8", APP0_AVI1]
+        i = _skip_app0(data, 2)
+        dqts, i = _copy_markers(data, i, sof0, {0xDB})
+        parts.extend(dqts)
+        parts.append(sof0_seg)
+        dhts, i = _copy_markers(data, i, sos, {0xC4})
+        parts.extend(dhts)
+        parts.append(data[sos:])
+        return b"".join(parts)
+
+    return (
+        b"\xff\xd8" + APP0_AVI1 + _dqt(0, LUMA_Q) + _dqt(1, CHROMA_Q)
+        + sof0_seg + _ruizu_dht() + data[sos:]
+    )
+
+
+def _entropy_offset(data: bytes) -> int:
+    sos = _find_marker(data, 2, 0xDA)
+    if sos < 0:
+        raise ValueError("JPEG missing SOS")
+    return sos + 2 + struct.unpack_from(">H", data, sos + 2)[0]
+
+
+def graft_header(header: bytes, body: bytes) -> bytes:
+    """Replace JPEG prefix through SOS with a known-good header (scan unchanged)."""
+    if body[:2] != b"\xff\xd8":
+        raise ValueError("body is not JPEG")
+    off = _entropy_offset(body)
+    if len(header) != off:
+        raise ValueError(f"header length {len(header)} != body SOS prefix {off}")
+    return header + body[off:]
+
+
+def load_official_header(path: Path) -> bytes:
+    from ruizu_mux import extract
+
+    videos, _ = extract(path)
+    body = videos[0]
+    return body[: _entropy_offset(body)]
+
+
+def pad_jpeg(jpeg: bytes, size: int, fill: int = 0xFF) -> bytes:
+    """Pad JPEG chunk to a fixed byte length (fill bytes after EOI)."""
+    if not jpeg.endswith(b"\xff\xd9"):
+        raise ValueError("JPEG missing EOI")
+    if len(jpeg) >= size:
+        return jpeg[:size]
+    return jpeg + bytes([fill]) * (size - len(jpeg))
+
+
+def fit_jpeg(jpeg: bytes, size: int, fill: int = 0x00) -> bytes:
+    """Pad or truncate a JPEG chunk to an exact byte length (official idx1 sizes)."""
+    if len(jpeg) >= size:
+        return jpeg[:size]
+    if not jpeg.endswith(b"\xff\xd9"):
+        raise ValueError("JPEG missing EOI")
+    return jpeg + bytes([fill]) * (size - len(jpeg))
+
+
+def scan_length(jpeg: bytes) -> int:
+    """Bytes from SOS entropy start through end of chunk (incl. post-EOI pad)."""
+    return len(jpeg) - _entropy_offset(jpeg)
+
+
+def fit_scan_mod4(jpeg: bytes, fill: int = 0x00) -> bytes:
+    """Pad after EOI so scan length ≡ 1 (mod 4), matching official.avi layout."""
+    pad = (1 - scan_length(jpeg) % 4) % 4
+    if not pad:
+        return jpeg
+    return fit_jpeg(jpeg, len(jpeg) + pad, fill)
+
+
+def fit_scan_tier(jpeg: bytes, tier: int = 38, fill: int = 0x00) -> bytes:
+    """Pad scan toward vendor size: tier extra bytes, scan length ≡ 1 (mod 4)."""
+    s = scan_length(jpeg)
+    need = tier + ((1 - (s + tier) % 4) % 4)
+    return fit_jpeg(jpeg, len(jpeg) + need, fill)
+
+
+def fit_scan_frame(jpeg: bytes, mode: str = "tier", ref_size: int | None = None, fill: int = 0x00) -> bytes:
+    """Apply per-frame idx1 sizing for device playback."""
+    if mode == "none":
+        return jpeg
+    if mode == "mod4":
+        return fit_scan_mod4(jpeg, fill)
+    if mode == "tier":
+        return fit_scan_tier(jpeg, fill=fill)
+    if mode == "fixed":
+        if ref_size is None:
+            raise ValueError("fixed mode requires ref_size")
+        return fit_jpeg(jpeg, ref_size, fill)
+    if mode == "reference":
+        if ref_size is None:
+            raise ValueError("reference mode requires ref_size")
+        return fit_jpeg(jpeg, ref_size, fill)
+    raise ValueError(f"unknown fit mode: {mode}")
