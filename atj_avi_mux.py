@@ -10,6 +10,8 @@ from atj_avi_jpeg import rewrite_jpeg
 JPEG_MODES = ("full", "minimal", "none")
 
 AUD_LEN_MUL = 258
+AUD_BLOCK_SIZE = 512
+NULL_ADPCM_BLOCK = bytes(AUD_BLOCK_SIZE)  # silent mono IMA ADPCM @ 22050 Hz
 IDX_KEY = 0x10
 
 
@@ -69,16 +71,18 @@ def extract(path: Path) -> tuple[list[bytes], list[bytes]]:
 
 
 def pair_streams(v: list[bytes], a: list[bytes], trim: bool) -> tuple[list[bytes], list[bytes]]:
-    if not v or not a:
-        raise ValueError("need at least one video frame and one audio block")
+    if not v:
+        raise ValueError("need at least one video frame")
     v, a = list(v), list(a)
+    if not a:
+        return v, [NULL_ADPCM_BLOCK] * len(v)
     if trim:
         n = min(len(v), len(a))
         return v[:n], a[:n]
     while len(a) > len(v):
         v.append(v[-1])
     while len(v) > len(a):
-        a.append(bytes(512))
+        a.append(NULL_ADPCM_BLOCK)
     return v, a
 
 
