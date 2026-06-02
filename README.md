@@ -33,7 +33,7 @@ SOURCE=video.mp4 SS=0 DURATION=60 ./make-atj-avi-encoder.sh music.amv
 | ---------- | ------------------------ | ------------------------------------------------ |
 | `SOURCE`   | _(testsrc)_              | Input video file                                 |
 | `SS`       | `0`                      | Start time (seconds)                             |
-| `DURATION` | `30`                     | Clip length (seconds)                            |
+| `DURATION` | _(source duration)_      | Clip length (seconds)                            |
 | `QUALITY`  | `14`                     | Vendor quality tier 14–22 (use **14** on device) |
 | `FIT`      | `tier`                   | `tier`, `mod4`, `none`, `fixed`, `reference`     |
 | `REF_AVI`  | `reference/official.avi` | For `FIT=reference` re-encode only               |
