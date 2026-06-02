@@ -2,14 +2,15 @@
 # Encode ATJ AVI: native turbo scan + per-frame idx1 sizing + atj_avi_mux.
 #
 # Examples:
-#   ./make-atj-avi-encoder.sh out.avi
-#   SOURCE=music.webm DURATION=60 SS=10 ./make-atj-avi-encoder.sh music.avi
-#   FIT=reference ./make-atj-avi-encoder.sh reenc.avi   # re-encode same pixels as official.avi only
+#   SOURCE=clip.webm ./make-atj-avi-encoder.sh              → clip.avi (same dir)
+#   SOURCE=/path/my.movie.webm ./make-atj-avi-encoder.sh    → /path/my.movie.avi
+#   ./make-atj-avi-encoder.sh out.avi                       → explicit output path
+#   FIT=reference ./make-atj-avi-encoder.sh reenc.avi
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-OUT="${1:-$ROOT/atj-avi-encoder-custom.avi}"
 SOURCE="${SOURCE:-}"
+OUT="${1:-}"
 SS="${SS:-0}"
 QUALITY="${QUALITY:-14}"
 FIT="${FIT:-tier}"          # none | mod4 | tier | fixed | reference
@@ -35,6 +36,14 @@ fi
 if [[ ! -x "$DECODE_FFMPEG" ]]; then
     echo "error: ffmpeg not found" >&2
     exit 1
+fi
+
+if [[ -z "$OUT" ]]; then
+    if [[ -n "$SOURCE" ]]; then
+        OUT="$(dirname -- "$SOURCE")/$(basename -- "${SOURCE%.*}").avi"
+    else
+        OUT="$ROOT/atj-avi-encoder-custom.avi"
+    fi
 fi
 
 mkdir -p "$WORK"
