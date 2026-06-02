@@ -24,7 +24,7 @@ Optional: **cjpeg** / **djpeg** (IJG) for reference encode path in `atj_avi_scan
 ./make-atj-avi-encoder.sh out.avi
 
 # From your own video:
-SOURCE=video.mp4 SS=0 DURATION=60 ./make-atj-avi-encoder.sh music.amv
+SOURCE=video.mp4 SS=0 DURATION=60 ./make-atj-avi-encoder.sh music.avi
 ```
 
 ### Environment variables (`make-atj-avi-encoder.sh`)

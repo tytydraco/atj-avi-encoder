@@ -10,7 +10,6 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OUT="${1:-$ROOT/atj-avi-encoder-custom.avi}"
 SOURCE="${SOURCE:-}"
-DURATION="${DURATION:-}"
 SS="${SS:-0}"
 QUALITY="${QUALITY:-14}"
 FIT="${FIT:-tier}"          # none | mod4 | tier | fixed | reference
@@ -41,12 +40,21 @@ fi
 mkdir -p "$WORK"
 make -C "$ROOT/atj_avi_scan" -s
 
-SRC_DURATION="$(ffprobe \
-    -v error \
-    -show_entries "format=duration" \
-    -of "default=noprint_wrappers=1:nokey=1" \
-    "$SOURCE")"
-DURATION="${DURATION:-"$SRC_DURATION"}"
+if [[ -z "${DURATION:-}" ]]; then
+    # Match source duration if specified, otherwise default.
+    if [[ -f "$SOURCE" ]]; then
+        DURATION="$(ffprobe \
+            -v error \
+            -show_entries "format=duration" \
+            -of "default=noprint_wrappers=1:nokey=1" \
+            "$SOURCE")"
+
+        # Integer value.
+        DURATION="${DURATION%.*}"
+    else
+        DURATION=30
+    fi
+fi
 
 NFRAMES=$((DURATION * 542 / 25))
 SS_ARGS=()
