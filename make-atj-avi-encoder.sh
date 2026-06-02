@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# Encode Ruizu AVI: native turbo scan + per-frame idx1 sizing + ruizu_mux.
+# Encode ATJ AVI: native turbo scan + per-frame idx1 sizing + atj_avi_mux.
 #
 # Examples:
-#   ./make-ruizu.sh out.avi
-#   SOURCE=music.webm DURATION=60 SS=10 ./make-ruizu.sh music.avi
-#   FIT=reference ./make-ruizu.sh reenc.avi   # re-encode same pixels as official.avi only
+#   ./make-atj-avi-encoder.sh out.avi
+#   SOURCE=music.webm DURATION=60 SS=10 ./make-atj-avi-encoder.sh music.avi
+#   FIT=reference ./make-atj-avi-encoder.sh reenc.avi   # re-encode same pixels as official.avi only
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-OUT="${1:-$ROOT/ruizu-custom.avi}"
+OUT="${1:-$ROOT/atj-avi-encoder-custom.avi}"
 SOURCE="${SOURCE:-}"
 DURATION="${DURATION:-30}"
 SS="${SS:-0}"
@@ -23,7 +23,7 @@ if [[ -z "$REF_AVI" ]]; then
         REF_AVI="$ROOT/official.avi"
     fi
 fi
-WORK="${RUIZU_WORK:-$ROOT/.ruizu-work}"
+WORK="${ATJ_AVI_ENCODER_WORK:-$ROOT/.atj-avi-encoder-work}"
 ELEMENT="$WORK/element.avi"
 YUV="$WORK/element.yuv"
 DECODE_FFMPEG="${DECODE_FFMPEG:-/usr/bin/ffmpeg}"
@@ -39,7 +39,7 @@ if [[ ! -x "$DECODE_FFMPEG" ]]; then
 fi
 
 mkdir -p "$WORK"
-make -C "$ROOT/ruizu_scan" -s
+make -C "$ROOT/atj_avi_scan" -s
 
 NFRAMES=$((DURATION * 542 / 25))
 SS_ARGS=()

@@ -1,6 +1,6 @@
-# Ruizu muxer — Dart porting notes
+# ATJ AVI muxer — Dart porting notes
 
-The entire muxer is `ruizu_mux.py` (~120 lines). Map each piece like this:
+The entire muxer is `atj_avi_mux.py` (~120 lines). Map each piece like this:
 
 | Python | Dart |
 |--------|------|
@@ -11,8 +11,8 @@ The entire muxer is `ruizu_mux.py` (~120 lines). Map each piece like this:
 
 ## Algorithm (5 steps)
 
-1. **Header** — Load `ruizu_hdrl.bin` (316 bytes, extracted once from a known-good
-   Ruizu AVI). Patch frame count and optional width/height. No need to ship
+1. **Header** — Load `atj_avi_hdrl.bin` (316 bytes, extracted once from a known-good
+   ATJ AVI). Patch frame count and optional width/height. No need to ship
    `official.avi` in production.
    - `avih` +16 → frame count (`uint32`)
    - last `strh` +32 → `frame_count * 258` (audio length field)
@@ -32,19 +32,19 @@ The entire muxer is `ruizu_mux.py` (~120 lines). Map each piece like this:
 ## CLI
 
 ```
-python3 ruizu_mux.py <source.avi> <out.avi> [--trim] [--no-jpeg-rewrite]
-./make-ruizu.sh [out.avi]          # system ffmpeg encode + jpeg rewrite + mux (default pad)
-TRIM=1 ./make-ruizu.sh out.avi     # truncate longer stream (usually breaks playback)
+python3 atj_avi_mux.py <source.avi> <out.avi> [--trim] [--no-jpeg-rewrite]
+./make-atj-avi-encoder.sh [out.avi]          # system ffmpeg encode + jpeg rewrite + mux (default pad)
+TRIM=1 ./make-atj-avi-encoder.sh out.avi     # truncate longer stream (usually breaks playback)
 ./test-muxer.sh                    # regression tests
 ```
 
-## JPEG rewrite (`ruizu_jpeg.py`)
+## JPEG rewrite (`atj_avi_jpeg.py`)
 
 System ffmpeg writes JFIF MJPEG. The muxer calls `rewrite_jpeg()` on each video
 frame by default (matches patched `-avi_mjpeg 1` headers):
 
 - APP0 `AVI1` instead of `JFIF`
-- Two vendor DQT tables (from `ff_ruizu_*_quant`)
+- Two vendor DQT tables (from `ff_atj_avi_*_quant`)
 - SOF0 with chroma matrix id 1
 - Four separate DHT markers (default MJPEG Huffman)
 
@@ -60,8 +60,8 @@ targets — it glitches after the first frame.
 
 | Piece | Patched `./prefix/bin/ffmpeg` | System `ffmpeg` |
 |-------|------------------------------|-----------------|
-| **Mux** | `ruizu_mux.py` | `ruizu_mux.py` |
-| **Encode MJPEG** | `-avi_mjpeg 1` | `ruizu_jpeg.rewrite_jpeg()` in muxer (default) |
+| **Mux** | `atj_avi_mux.py` | `atj_avi_mux.py` |
+| **Encode MJPEG** | `-avi_mjpeg 1` | `atj_avi_jpeg.rewrite_jpeg()` in muxer (default) |
 | **Encode ADPCM** | `-block_size 512` | `-block_size 512` |
 
 Patched encoder also uses vendor quant tables during DCT (slightly different frame

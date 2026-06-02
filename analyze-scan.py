@@ -7,8 +7,8 @@ import struct
 import sys
 from pathlib import Path
 
-import ruizu_mux as m
-from ruizu_jpeg import _entropy_offset, LUMA_Q, CHROMA_Q
+import atj_avi_mux as m
+from atj_avi_jpeg import _entropy_offset, LUMA_Q, CHROMA_Q
 
 
 def dqt_tables(frame: bytes) -> dict[int, bytes]:
@@ -50,13 +50,13 @@ def main() -> None:
     ref = root / "official.avi"
     paths = [ref]
     for p in [
-        root / ".ruizu-work/music/element_avi_mjpeg.avi",
-        root / ".ruizu-work/music/element.avi",
+        root / ".atj-avi-encoder-work/music/element_avi_mjpeg.avi",
+        root / ".atj-avi-encoder-work/music/element.avi",
     ]:
         if p.is_file():
             paths.append(p)
 
-    print("=== DQT reference (ruizu_jpeg constants) ===")
+    print("=== DQT reference (atj_avi_jpeg constants) ===")
     print("luma sum", sum(LUMA_Q), "chroma sum", sum(CHROMA_Q))
     print()
 

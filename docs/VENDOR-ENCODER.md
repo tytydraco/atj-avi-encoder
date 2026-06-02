@@ -1,12 +1,12 @@
-# Ruizu vendor MJPEG encoder bridge
+# ATJ AVI vendor MJPEG encoder bridge
 
 Device playback requires **vendor entropy-coded MJPEG scans**, not just matching
 headers. Round 4 confirmed:
 
 | Component | Status | Tool |
 |-----------|--------|------|
-| AVI container (hdrl, idx1, interleave) | Solved | `ruizu_mux.py` |
-| JPEG headers (623 B, APP0 `AVI1`, DQT/DHT) | Solved | `-avi_mjpeg 1` or `ruizu_jpeg.py` |
+| AVI container (hdrl, idx1, interleave) | Solved | `atj_avi_mux.py` |
+| JPEG headers (623 B, APP0 `AVI1`, DQT/DHT) | Solved | `-avi_mjpeg 1` or `atj_avi_jpeg.py` |
 | JPEG scan bitstream (~11 KB/frame) | **Vendor only** | `AVI_EncDLL.dll` |
 
 Official video + any audio plays perfectly (`01_official_video_music_audio.avi`).
@@ -24,7 +24,7 @@ ffmpeg decode ──► 128×128 YUV420 @ 542/25 fps
 AVI_EncDLL.dll ──► vendor MJPEG (~11568 B/frame, ~10945 B scan)
     │              (Wine harness: vendor_enc/avi_enc_test.exe)
     ▼
-ruizu_mux.py ────► Ruizu AVI (316-byte hdrl, idx1 flags 0x10)
+atj_avi_mux.py ────► ATJ AVI (316-byte hdrl, idx1 flags 0x10)
     │
     ▼
 device
@@ -147,7 +147,7 @@ FFMpegDll decode path is already proxied in `ffmpeg_proxy/` (see `ffmpeg_proxy/R
 ## What we tried (and why FFmpeg alone is insufficient)
 
 - `-avi_mjpeg 1` — headers match official (623 B); scan ~1487 B → format error frame 2
-- `ruizu_jpeg.rewrite_jpeg` — fixes markers/DQT/DHT; scan unchanged → same failure
+- `atj_avi_jpeg.rewrite_jpeg` — fixes markers/DQT/DHT; scan unchanged → same failure
 - Duplicate frame 0 — plays smeared (header/scan quant mismatch tolerated once)
 - Duplicate frame 1 — rejected (our f1 scan differs from f0)
 - Fixed pad to 11568 B — OK for short clips; 30s fails after ~3s (idx1 size must vary per frame)
@@ -157,15 +157,15 @@ FFMpegDll decode path is already proxied in `ffmpeg_proxy/` (see `ffmpeg_proxy/R
 Device idx1 byte count per frame must track **this clip's** encoded scan (pad `0x00` after EOI;
 scan length ≡ 1 mod 4). Do not borrow another file's size schedule.
 
-Production: `SOURCE=music.webm ./make-ruizu.sh out.avi` (default `--fit tier`, `QUALITY=14`).
+Production: `SOURCE=music.webm ./make-atj-avi-encoder.sh out.avi` (default `--fit tier`, `QUALITY=14`).
 R10 device check: tier/mod4 perfect on music 30s/60s; `QUALITY=18` plays but oversaturated — stay on tier **14**.
-Re-encode: `FIT=reference ./make-ruizu.sh out.avi` with YUV from `official.avi` only.
+Re-encode: `FIT=reference ./make-atj-avi-encoder.sh out.avi` with YUV from `official.avi` only.
 
 The hardware decoder validates **per-frame scan entropy**, not container layout.
 
-## For other Ruizu / Actions-chip devices
+## For other ATJ AVI / Actions-chip devices
 
-1. Use `ruizu_mux.py` + `ruizu_hdrl.bin` for container (adjust dimensions in header if needed).
+1. Use `atj_avi_mux.py` + `atj_avi_hdrl.bin` for container (adjust dimensions in header if needed).
 2. Provide vendor `AVI_EncDLL.dll` from that device's converter package.
 3. Match resolution/fps/quality from the device's `AmvTransform.ini` `AVISIZE=` line.
 4. Do **not** run `rewrite_jpeg` on vendor encoder output.

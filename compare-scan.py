@@ -6,8 +6,8 @@ import struct
 import sys
 from pathlib import Path
 
-import ruizu_mux as m
-from ruizu_jpeg import _entropy_offset
+import atj_avi_mux as m
+from atj_avi_jpeg import _entropy_offset
 
 
 def scan_stats(j: bytes) -> dict:

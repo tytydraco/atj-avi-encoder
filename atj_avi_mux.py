@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Ruizu AVI muxer: copy official.avi hdrl, interleave 00dc/01wb, write idx1."""
+"""ATJ AVI muxer: copy official.avi hdrl, interleave 00dc/01wb, write idx1."""
 
 import struct
 import sys
 from pathlib import Path
 
-from ruizu_jpeg import rewrite_jpeg
+from atj_avi_jpeg import rewrite_jpeg
 
 JPEG_MODES = ("full", "minimal", "none")
 
@@ -138,16 +138,16 @@ def main() -> None:
     if jpeg_mode not in JPEG_MODES:
         sys.exit(f"bad --jpeg-mode: {jpeg_mode}")
     root = Path(__file__).resolve().parent
-    tpl = root / "ruizu_hdrl.bin"
+    tpl = root / "atj_avi_hdrl.bin"
     if not tpl.is_file():
         tpl = root / "official.avi"
         if tpl.is_file():
             data = tpl.read_bytes()
             movi = find_movi(data)
             tpl.write_bytes(data[:movi])  # one-time extract for older checkouts
-            tpl = root / "ruizu_hdrl.bin"
+            tpl = root / "atj_avi_hdrl.bin"
     if not tpl.is_file():
-        sys.exit("header template missing: ruizu_hdrl.bin (or official.avi to generate it)")
+        sys.exit("header template missing: atj_avi_hdrl.bin (or official.avi to generate it)")
     hdr, frames_off, aud_len_off = load_header(tpl)
     videos, audios = extract(src)
     if rewrite and jpeg_mode != "none":

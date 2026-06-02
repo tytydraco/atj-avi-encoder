@@ -1,5 +1,5 @@
 /* Encode one YUV420P frame from official.avi and compare scan size. */
-#include "ruizu_scan.h"
+#include "atj_avi_scan.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -41,12 +41,12 @@ static int read_file(const char *path, uint8_t **out, size_t *out_len)
 
 int main(int argc, char **argv)
 {
-    const char *yuv_path = "/tmp/ruizu_f0.yuv";
+    const char *yuv_path = "/tmp/atj_avi_f0.yuv";
     int quality = 14;
     uint8_t *yuv = NULL;
     size_t yuv_len = 0;
     uint8_t out[256 * 1024];
-    RuizuScanEnc *enc;
+    AtjAviScanEnc *enc;
     int n;
 
     if (argc > 1)
@@ -55,7 +55,7 @@ int main(int argc, char **argv)
         quality = atoi(argv[2]);
 
     if (read_file(yuv_path, &yuv, &yuv_len) != 0) {
-        fprintf(stderr, "read %s failed (run: djpeg -crop 128x128+0+0 -grayscale off /tmp/ruizu_f0.jpg | ...)\n",
+        fprintf(stderr, "read %s failed (run: djpeg -crop 128x128+0+0 -grayscale off /tmp/atj_avi_f0.jpg | ...)\n",
                 yuv_path);
         fprintf(stderr, "  or extract YUV: ffmpeg -i official.avi -frames:v 1 -pix_fmt yuv420p %s\n", yuv_path);
         return 1;
@@ -66,15 +66,15 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    enc = ruizu_scan_enc_open(128, 128, quality);
+    enc = atj_avi_scan_enc_open(128, 128, quality);
     if (!enc) {
-        fprintf(stderr, "ruizu_scan_enc_open failed\n");
+        fprintf(stderr, "atj_avi_scan_enc_open failed\n");
         free(yuv);
         return 1;
     }
 
-    n = ruizu_scan_enc_frame(enc, yuv, out, sizeof(out));
-    ruizu_scan_enc_close(enc);
+    n = atj_avi_scan_enc_frame(enc, yuv, out, sizeof(out));
+    atj_avi_scan_enc_close(enc);
     free(yuv);
 
     if (n < 0) {
@@ -83,17 +83,17 @@ int main(int argc, char **argv)
     }
 
     printf("vendor_q=%d ijg_q=%d total=%d scan=%d\n",
-           quality, ruizu_scan_vendor_to_ijg_quality(quality), n, n - 623);
+           quality, atj_avi_scan_vendor_to_ijg_quality(quality), n, n - 623);
     {
-        FILE *jf = fopen("/tmp/ruizu_scan_test.jpg", "wb");
+        FILE *jf = fopen("/tmp/atj_avi_scan_test.jpg", "wb");
         if (!jf || fwrite(out, 1, (size_t)n, jf) != (size_t)n) {
-            fprintf(stderr, "write /tmp/ruizu_scan_test.jpg failed\n");
+            fprintf(stderr, "write /tmp/atj_avi_scan_test.jpg failed\n");
             if (jf)
                 fclose(jf);
             return 1;
         }
         fclose(jf);
-        printf("wrote /tmp/ruizu_scan_test.jpg\n");
+        printf("wrote /tmp/atj_avi_scan_test.jpg\n");
     }
     return 0;
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mux ruizu AVI with per-frame MJPEG from a scan encoder backend."""
+"""Mux ATJ AVI with per-frame MJPEG from a scan encoder backend."""
 
 from __future__ import annotations
 
@@ -8,8 +8,8 @@ import sys
 from pathlib import Path
 from typing import Callable
 
-import ruizu_mux as m
-from ruizu_jpeg import fit_scan_frame
+import atj_avi_mux as m
+from atj_avi_jpeg import fit_scan_frame
 
 
 def build(
@@ -36,7 +36,7 @@ def build(
         raw = encode_frame(yuv[off : off + frame_bytes])
         videos.append(fit_frame(raw, i))
 
-    hdr, frames_off, aud_len_off = m.load_header(root / "ruizu_hdrl.bin")
+    hdr, frames_off, aud_len_off = m.load_header(root / "atj_avi_hdrl.bin")
     v, a = m.pair_streams(videos, audios, trim=trim)
     dst.write_bytes(m.mux(v, a, hdr, frames_off, aud_len_off))
     sizes = sorted(set(len(x) for x in v[:20]))
@@ -83,15 +83,15 @@ def main() -> None:
         return fit_scan_frame(jpeg, args.fit)
 
     if args.backend == "cjpeg":
-        from ruizu_scan_enc import encode_cjpeg
+        from atj_avi_scan_enc import encode_cjpeg
 
         def enc(chunk: bytes) -> bytes:
             return encode_cjpeg(chunk, args.width, args.height, args.quality)
 
     elif args.backend == "turbo":
-        from ruizu_scan_enc import RuizuScanEnc
+        from atj_avi_scan_enc import AtjAviScanEnc
 
-        scanner = RuizuScanEnc(args.width, args.height, args.quality)
+        scanner = AtjAviScanEnc(args.width, args.height, args.quality)
 
         def enc(chunk: bytes) -> bytes:
             return scanner.encode(chunk)

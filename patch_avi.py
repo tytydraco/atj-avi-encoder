@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""Composable in-place AVI post-processor for Ruizu device compatibility tests."""
+"""Composable in-place AVI post-processor for ATJ AVI device compatibility tests."""
 
 import argparse
 import struct
 import sys
 from pathlib import Path
 
-from ruizu_jpeg import rewrite_jpeg
+from atj_avi_jpeg import rewrite_jpeg
 
 IMA_ADPCM = 0x0011
-RUIZU_BYTE_RATE = 11100
+ATJ_AVI_BYTE_RATE = 11100
 IDX_KEY = 0x10
 
 
@@ -80,7 +80,7 @@ def patch_audio_strf(data: bytes) -> bytes:
             chunk_size = struct.unpack_from("<I", out, i + 4)[0]
             body = i + 8
             if chunk_size >= 16 and struct.unpack_from("<H", out, body)[0] == IMA_ADPCM:
-                struct.pack_into("<I", out, body + 8, RUIZU_BYTE_RATE)
+                struct.pack_into("<I", out, body + 8, ATJ_AVI_BYTE_RATE)
                 patched += 1
             i += 8 + chunk_size + (chunk_size & 1)
         else:
@@ -136,7 +136,7 @@ def verify(path: Path, expect_avi1: bool = False, expect_byte_rate: int | None =
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description="Patch Ruizu-incompatible AVI headers in place")
+    ap = argparse.ArgumentParser(description="Patch ATJ AVI-incompatible AVI headers in place")
     ap.add_argument("infile")
     ap.add_argument("outfile", nargs="?")
     ap.add_argument("--jpeg", action="store_true", help="rewrite 00dc MJPEG to AVI1 layout")

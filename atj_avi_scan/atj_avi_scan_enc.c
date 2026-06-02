@@ -1,17 +1,17 @@
 /*
- * Ruizu scan encoder — libjpeg-turbo YUV420 compress + 623-byte AVI1 header graft.
+ * ATJ AVI scan encoder — libjpeg-turbo YUV420 compress + 623-byte AVI1 header graft.
  */
-#include "ruizu_scan.h"
-#include "ruizu_tables.h"
-#include "ruizu_header.h"
+#include "atj_avi_scan.h"
+#include "atj_avi_tables.h"
+#include "atj_avi_header.h"
 
 #include <stdlib.h>
 #include <string.h>
 #include <turbojpeg.h>
 
-#define RUIZU_SCAN_TMP_CAP (256 * 1024)
+#define ATJ_AVI_SCAN_TMP_CAP (256 * 1024)
 
-struct RuizuScanEnc {
+struct AtjAviScanEnc {
     int width;
     int height;
     int vendor_quality;
@@ -21,19 +21,19 @@ struct RuizuScanEnc {
     unsigned long tmp_cap;
 };
 
-int ruizu_scan_vendor_to_ijg_quality(int vendor_quality)
+int atj_avi_scan_vendor_to_ijg_quality(int vendor_quality)
 {
     /*
      * libjpeg-turbo uses IJG default quant tables in the scan body; the 623-byte
-     * graft supplies Ruizu DQT/DHT. Tier 14 ≈ turbo q75 → scan ~10900 B (official
-     * ~10945). Ruizu-quant encoding (cjpeg -qtables) uses q≈50 — see
-     * ruizu_scan_enc.encode_cjpeg().
+     * graft supplies ATJ AVI DQT/DHT. Tier 14 ≈ turbo q75 → scan ~10900 B (official
+     * ~10945). ATJ AVI-quant encoding (cjpeg -qtables) uses q≈50 — see
+     * atj_avi_scan_enc.encode_cjpeg().
      */
-    if (vendor_quality < RUIZU_SCAN_QUALITY_MIN)
-        vendor_quality = RUIZU_SCAN_QUALITY_MIN;
-    if (vendor_quality > RUIZU_SCAN_QUALITY_MAX)
-        vendor_quality = RUIZU_SCAN_QUALITY_MAX;
-    return 75 + (vendor_quality - RUIZU_SCAN_QUALITY_MIN) * 2;
+    if (vendor_quality < ATJ_AVI_SCAN_QUALITY_MIN)
+        vendor_quality = ATJ_AVI_SCAN_QUALITY_MIN;
+    if (vendor_quality > ATJ_AVI_SCAN_QUALITY_MAX)
+        vendor_quality = ATJ_AVI_SCAN_QUALITY_MAX;
+    return 75 + (vendor_quality - ATJ_AVI_SCAN_QUALITY_MIN) * 2;
 }
 
 static int find_entropy_offset(const uint8_t *data, size_t len)
@@ -57,27 +57,27 @@ static int find_entropy_offset(const uint8_t *data, size_t len)
     return -1;
 }
 
-RuizuScanEnc *ruizu_scan_enc_open(int width, int height, int quality)
+AtjAviScanEnc *atj_avi_scan_enc_open(int width, int height, int quality)
 {
-    RuizuScanEnc *enc = calloc(1, sizeof(*enc));
+    AtjAviScanEnc *enc = calloc(1, sizeof(*enc));
 
     if (!enc)
         return NULL;
     enc->width = width;
     enc->height = height;
     enc->vendor_quality = quality;
-    enc->ijg_quality = ruizu_scan_vendor_to_ijg_quality(quality);
+    enc->ijg_quality = atj_avi_scan_vendor_to_ijg_quality(quality);
     enc->tj = tjInitCompress();
-    enc->tmp = malloc(RUIZU_SCAN_TMP_CAP);
-    enc->tmp_cap = RUIZU_SCAN_TMP_CAP;
+    enc->tmp = malloc(ATJ_AVI_SCAN_TMP_CAP);
+    enc->tmp_cap = ATJ_AVI_SCAN_TMP_CAP;
     if (!enc->tj || !enc->tmp) {
-        ruizu_scan_enc_close(enc);
+        atj_avi_scan_enc_close(enc);
         return NULL;
     }
     return enc;
 }
 
-void ruizu_scan_enc_close(RuizuScanEnc *enc)
+void atj_avi_scan_enc_close(AtjAviScanEnc *enc)
 {
     if (!enc)
         return;
@@ -87,7 +87,7 @@ void ruizu_scan_enc_close(RuizuScanEnc *enc)
     free(enc);
 }
 
-int ruizu_scan_enc_frame(RuizuScanEnc *enc, const uint8_t *yuv420,
+int atj_avi_scan_enc_frame(AtjAviScanEnc *enc, const uint8_t *yuv420,
                          uint8_t *out, size_t out_cap)
 {
     const unsigned char *planes[3];
@@ -129,11 +129,11 @@ int ruizu_scan_enc_frame(RuizuScanEnc *enc, const uint8_t *yuv420,
     if (body_off < 0)
         return -5;
 
-    total = RUIZU_JPEG_HEADER_SIZE + (int)jpeg_size - body_off;
+    total = ATJ_AVI_JPEG_HEADER_SIZE + (int)jpeg_size - body_off;
     if ((size_t)total > out_cap)
         return -6;
 
-    memcpy(out, ruizu_jpeg_header, RUIZU_JPEG_HEADER_SIZE);
-    memcpy(out + RUIZU_JPEG_HEADER_SIZE, enc->tmp + body_off, jpeg_size - (size_t)body_off);
+    memcpy(out, atj_avi_jpeg_header, ATJ_AVI_JPEG_HEADER_SIZE);
+    memcpy(out + ATJ_AVI_JPEG_HEADER_SIZE, enc->tmp + body_off, jpeg_size - (size_t)body_off);
     return total;
 }

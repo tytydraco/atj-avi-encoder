@@ -1,4 +1,4 @@
-"""Rewrite FFmpeg JFIF MJPEG frames to Ruizu AVI1 layout (matches -avi_mjpeg 1)."""
+"""Rewrite FFmpeg JFIF MJPEG frames to ATJ AVI1 layout (matches -avi_mjpeg 1)."""
 
 import struct
 from pathlib import Path
@@ -65,7 +65,7 @@ def _dht(table_class: int, table_id: int, bits: bytes, vals: bytes) -> bytes:
     return b"\xff\xc4" + struct.pack(">H", len(body) + 2) + body
 
 
-def _ruizu_dht() -> bytes:
+def _atj_avi_dht() -> bytes:
     return b"".join([
         _dht(0, 0, BITS_DC_L, VAL_DC),
         _dht(1, 0, BITS_AC_L, VAL_AC_L),
@@ -151,7 +151,7 @@ def rewrite_jpeg(data: bytes, mode: str = "full") -> bytes:
 
     return (
         b"\xff\xd8" + APP0_AVI1 + _dqt(0, LUMA_Q) + _dqt(1, CHROMA_Q)
-        + sof0_seg + _ruizu_dht() + data[sos:]
+        + sof0_seg + _atj_avi_dht() + data[sos:]
     )
 
 
@@ -173,7 +173,7 @@ def graft_header(header: bytes, body: bytes) -> bytes:
 
 
 def load_official_header(path: Path) -> bytes:
-    from ruizu_mux import extract
+    from atj_avi_mux import extract
 
     videos, _ = extract(path)
     body = videos[0]

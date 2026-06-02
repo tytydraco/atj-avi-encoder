@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Byte-level AVI/AMV structure parser and diff tool for Ruizu compatibility work."""
+"""Byte-level AVI/AMV structure parser and diff tool for ATJ AVI compatibility work."""
 
 import json
 import struct
