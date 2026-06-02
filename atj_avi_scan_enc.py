@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parent
 LIB = ROOT / "atj_avi_scan" / "build" / "libatj_avi_scan.so"
 QTABLES = ROOT / "atj_avi_scan" / "atj_avi.qtables"
 
-VENDOR_QUALITY_MIN = 14
+VENDOR_QUALITY_MIN = 0
 VENDOR_QUALITY_MAX = 22
 VENDOR_QUALITY_DEFAULT = 22
 HEADER_SIZE = 623
